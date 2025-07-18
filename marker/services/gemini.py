@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from marker.schema.blocks import Block
 from marker.services import BaseService
+import re
 
 logger = get_logger()
 
@@ -72,11 +73,51 @@ class BaseGeminiService(BaseService):
                 )
                 output = responses.candidates[0].content.parts[0].text
                 total_tokens = responses.usage_metadata.total_token_count
+                print(f"prompt: {prompt}\n\n")
+                print(f"output: {output}\n\n")
+
+                ####### retry parse json
+                MAX_JSON_PARSE_ATTEMPTS = 5
+                json_string = output.strip()
+                parsed_successfully = False
+                for attempt in range(MAX_JSON_PARSE_ATTEMPTS):
+                    try:
+                        # Attempt to extract JSON from a markdown code block first
+                        json_match = re.search(r"```json\n([\s\S]*?)\n```", json_string)
+                        if json_match:
+                            current_json_to_parse = json_match.group(1).strip()
+                        else:
+                            # If not in a markdown block, assume it's raw JSON
+                            current_json_to_parse = json_string
+        
+                        response_json = json.loads(current_json_to_parse)
+                        parsed_successfully = True
+                        break # Exit loop if parsing is successful
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Attempt {attempt + 1}/{MAX_JSON_PARSE_ATTEMPTS}: Error decoding JSON from LLM response: {e}")
+                        logger.debug(f"Raw JSON string causing error: {current_json_to_parse[:500]}...")
+        
+                        # Apply self-correction heuristics
+                        # Heuristic 1: Escape unescaped double quotes
+                        # This regex looks for a double quote that is NOT preceded by a backslash
+                        json_string = re.sub(r'(?<=[^\\])"', r'\\"', json_string) 
+                        
+                        # Heuristic 2: Escape newlines within string values (simple approach)
+                        # This is a more aggressive replacement and might need refinement
+                        json_string = json_string.replace("\n", "\\n")
+        
+                        # Heuristic 3: Remove trailing commas before '}' or ']' (simple approach)
+                        json_string = re.sub(r',\s*([}\]])', r'\1', json_string)
+        
+                        logger.warning(f"Attempt {attempt + 1}: Applied self-correction. Retrying...")
+                ####### retry parse json
+                
                 if block:
                     block.update_metadata(
                         llm_tokens_used=total_tokens, llm_request_count=1
                     )
-                return json.loads(output)
+                #return json.loads(output)
+                return response_json
             except APIError as e:
                 if e.code in [429, 443, 503]:
                     # Rate limit exceeded
