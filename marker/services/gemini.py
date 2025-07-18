@@ -20,7 +20,7 @@ logger = get_logger()
 class BaseGeminiService(BaseService):
     gemini_model_name: Annotated[
         str, "The name of the Google model to use for the service."
-    ] = "gemini-2.0-flash"
+    ] = "gemma-3-27b-it"
 
     def img_to_bytes(self, img: PIL.Image.Image):
         image_bytes = BytesIO()
