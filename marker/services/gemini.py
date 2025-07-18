@@ -66,8 +66,8 @@ class BaseGeminiService(BaseService):
                     ],  # According to gemini docs, it performs better if the image is the first element
                     config={
                         "temperature": 0,
-                        "response_schema": response_schema,
-                        "response_mime_type": "application/json",
+                        #"response_schema": response_schema,
+                        #"response_mime_type": "application/json", # json mode disabled for gemma
                     },
                 )
                 output = responses.candidates[0].content.parts[0].text
