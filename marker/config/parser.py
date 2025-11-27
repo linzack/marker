@@ -4,7 +4,6 @@ from typing import Dict
 
 import click
 
-from marker.config.crawler import crawler
 from marker.converters.pdf import PdfConverter
 from marker.logger import get_logger
 from marker.renderers.chunk import ChunkRenderer
@@ -61,7 +60,6 @@ class ConfigParser:
             default=False,
             help="Disable image extraction.",
         )(fn)
-
         # these are options that need a list transformation, i.e splitting/parsing a string
         fn = click.option(
             "--page_range",
@@ -108,8 +106,7 @@ class ConfigParser:
                 case "disable_image_extraction":
                     config["extract_images"] = False
                 case _:
-                    if k in crawler.attr_set:
-                        config[k] = v
+                    config[k] = v
 
         # Backward compatibility for google_api_key
         if settings.GOOGLE_API_KEY:

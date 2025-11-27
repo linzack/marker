@@ -10,7 +10,9 @@ from marker.processors.llm import BaseLLMComplexBlockProcessor
 from marker.schema import BlockTypes
 from marker.schema.blocks import Block, TableCell
 from marker.schema.document import Document
+from marker.logger import get_logger
 
+logger = get_logger()
 
 class LLMTableMergeProcessor(BaseLLMComplexBlockProcessor):
     block_types: Annotated[
@@ -48,6 +50,10 @@ class LLMTableMergeProcessor(BaseLLMComplexBlockProcessor):
     disable_tqdm: Annotated[
         bool,
         "Whether to disable the tqdm progress bar.",
+    ] = False
+    no_merge_tables_across_pages: Annotated[
+        bool,
+        "Whether to disable merging tables across pages and keep page delimiters.",
     ] = False
     table_merge_prompt: Annotated[
         str,
@@ -148,7 +154,11 @@ Table 2
         return max_cols
 
     def rewrite_blocks(self, document: Document):
-        pbar = tqdm(desc=f"{self.__class__.__name__} running", disable=self.disable_tqdm)
+        # Skip table merging if disabled via config
+        if self.no_merge_tables_across_pages:
+            logger.info("Skipping table merging across pages due to --no_merge_tables_across_pages flag")
+            return
+
         table_runs = []
         table_run = []
         prev_block = None
@@ -209,6 +219,17 @@ Table 2
 
         if table_run:
             table_runs.append(table_run)
+
+        # Don't show progress if there is nothing to process
+        total_table_runs = len(table_runs)
+        if total_table_runs == 0:
+            return
+
+        pbar = tqdm(
+            total=total_table_runs,
+            desc=f"{self.__class__.__name__} running",
+            disable=self.disable_tqdm,
+        )
 
         with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
             for future in as_completed([

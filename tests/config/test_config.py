@@ -45,7 +45,6 @@ def test_config_parser():
 
     assert config_dict["pdftext_workers"] == 1  # disabling multiprocessing does this
     assert config_dict["height_tolerance"] == 0.5
-    assert "output_dir" not in config_dict  # This is not a config key
 
 
 def test_config_none():
@@ -67,10 +66,9 @@ def test_config_llm():
 
 
 def test_config_force_ocr():
-    kwargs = capture_kwargs(["test", "--force_ocr", "--format_lines"])
+    kwargs = capture_kwargs(["test", "--force_ocr"])
     parser = ConfigParser(kwargs)
     config_dict = parser.generate_config_dict()
 
     # Validate kwarg capturing
     assert config_dict["force_ocr"]
-    assert config_dict["format_lines"]

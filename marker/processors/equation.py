@@ -48,7 +48,7 @@ class EquationProcessor(BaseProcessor):
         if self.equation_batch_size is not None:
             return self.equation_batch_size
         elif settings.TORCH_DEVICE_MODEL == "cuda":
-            return 16
+            return 32
         elif settings.TORCH_DEVICE_MODEL == "mps":
             return 6
         return 6
@@ -114,6 +114,7 @@ class EquationProcessor(BaseProcessor):
             fixed_math_html,
         )
         fixed_math_html = re.sub(r"\\n</math>$", "</math>", fixed_math_html)
+        fixed_math_html = re.sub(r"<br>", "", fixed_math_html)
         fixed_math_html = fix_text(
             fixed_math_html, config=TextFixerConfig(unescape_html=True)
         )
@@ -128,10 +129,12 @@ class EquationProcessor(BaseProcessor):
         predictions: List[OCRResult] = self.recognition_model(
             images=page_images,
             bboxes=bboxes,
-            task_names=["block_without_boxes"] * len(page_images),
+            task_names=["ocr_with_boxes"] * len(page_images),
             recognition_batch_size=self.get_batch_size(),
             sort_lines=False,
             drop_repeated_text=self.drop_repeated_text,
+            max_tokens=2048,
+            max_sliding_window=2148,
         )
 
         equation_predictions = [
